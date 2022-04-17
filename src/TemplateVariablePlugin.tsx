@@ -1,14 +1,8 @@
-import {
-  EditorConfig,
-  TextNode,
-  $getRoot,
-  RootNode,
-  ElementNode,
-} from 'lexical';
+import { EditorConfig, TextNode } from 'lexical';
 
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import useLexicalTextEntity from '@lexical/react/useLexicalTextEntity';
-import { useCallback, useEffect, useMemo } from 'react';
+import { MutableRefObject, useCallback, useEffect, useRef } from 'react';
 
 export class TemplateVariableNode extends TextNode {
   static getType() {
@@ -25,14 +19,14 @@ export class TemplateVariableNode extends TextNode {
 
   constructor(
     text: string,
-    public possibleVariableNames: string[],
+    public possibleVariableNames: MutableRefObject<string[]>,
     key?: string
   ) {
     super(text, key);
   }
 
   isValidVariableName() {
-    return this.possibleVariableNames.includes(this.getVariableName());
+    return this.possibleVariableNames.current.includes(this.getVariableName());
   }
 
   updateDOM<EditorContext extends Record<string, any>>(
@@ -40,6 +34,7 @@ export class TemplateVariableNode extends TextNode {
     element: HTMLElement,
     config: EditorConfig<EditorContext>
   ): boolean {
+    console.log('update', this.possibleVariableNames, this.getVariableName());
     if (this.isValidVariableName()) {
       element.classList.remove('invalid');
     } else {
@@ -308,7 +303,7 @@ const REGEX = new RegExp(getTemplateVariableRegexString(), 'i');
 
 export const $createTemplateVariableNode = (
   text: string,
-  possibleVariableNames: string[]
+  possibleVariableNames: MutableRefObject<string[]>
 ): TemplateVariableNode =>
   new TemplateVariableNode(text, possibleVariableNames);
 
@@ -318,33 +313,19 @@ export function $isTemplateVariableNode(
   return node instanceof TemplateVariableNode;
 }
 
-function getTemplateVariableNodes(root: RootNode) {
-  function* generator(nodes: ElementNode[]): Generator<TemplateVariableNode> {
-    for (const node of nodes) {
-      if ($isTemplateVariableNode(node as any)) {
-        yield node as any;
-      }
-      if ('getChildren' in node) {
-        yield* generator(node.getChildren() as ElementNode[]);
-      }
-    }
-  }
-
-  return generator(root.getChildren() as ElementNode[]);
-}
-
 interface TemplateVariablePluginProps {
   possibleVariableNames: string[];
 }
 
 export function TemplateVariablePlugin({
-  possibleVariableNames: possibleVariableNamesArray,
+  possibleVariableNames,
 }: TemplateVariablePluginProps) {
   const [editor] = useLexicalComposerContext();
-  const possibleVariableNames = useMemo(
-    () => new Set(possibleVariableNamesArray),
-    [possibleVariableNamesArray]
-  );
+  const possibleVariablesNamesRef = useRef(possibleVariableNames);
+
+  useEffect(() => {
+    possibleVariablesNamesRef.current = possibleVariableNames;
+  }, [possibleVariableNames]);
 
   useEffect(() => {
     if (!editor.hasNodes([TemplateVariableNode])) {
@@ -353,17 +334,6 @@ export function TemplateVariablePlugin({
       );
     }
   }, [editor]);
-
-  useEffect(() => {
-    // const state = editor.getEditorState();
-    editor.update(() => {
-      for (const node of getTemplateVariableNodes($getRoot())) {
-        const cloned = TemplateVariableNode.clone(node);
-        cloned.possibleVariableNames = possibleVariableNamesArray;
-        node.replace(cloned);
-      }
-    });
-  }, [possibleVariableNamesArray, editor]);
 
   const getTemplateVariableMatch = useCallback((text: string) => {
     const matchArr = REGEX.exec(text);
@@ -381,10 +351,11 @@ export function TemplateVariablePlugin({
       const textContent = textNode.getTextContent();
       return $createTemplateVariableNode(
         textContent,
-        possibleVariableNamesArray
+        possibleVariablesNamesRef
       );
     },
-    [possibleVariableNamesArray]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [possibleVariableNames] // Ensure editor rerenders when we receive new possibleVariableNames
   );
 
   useLexicalTextEntity<TemplateVariableNode>(

@@ -9,7 +9,6 @@ export function VariablesInput({
   possibleVariableNames,
   onChange,
 }: VariablesInputProps) {
-  const [hasError, setHasError] = useState('');
   const [variables, setVariables] = useState<Record<string, string>>({});
 
   return possibleVariableNames.length === 0 ? (

@@ -3,22 +3,14 @@ import PlainTextPlugin from '@lexical/react/LexicalPlainTextPlugin';
 import ContentEditable from '@lexical/react/LexicalContentEditable';
 import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin';
 import OnChangePlugin from '@lexical/react/LexicalOnChangePlugin';
-import {
-  $getRoot,
-  $getSelection,
-  EditorState,
-  LexicalEditor,
-  TextNode,
-} from 'lexical';
+import { $getRoot, EditorState, LexicalEditor, TextNode } from 'lexical';
 import {
   TemplateVariablePlugin,
   TemplateVariableNode,
   $isTemplateVariableNode,
 } from './TemplateVariablePlugin';
 import { useCallback } from 'react';
-import { emptyTemplate, Template } from './Template';
-
-function onChange(editorState: EditorState) {}
+import { Template } from './Template';
 
 const theme = {
   ltr: 'ltr',
